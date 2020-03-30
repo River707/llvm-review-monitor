@@ -1,0 +1,228 @@
+body {
+    font-family: sans-serif;
+  }
+  
+  table {
+    font-size: inherit;
+    border-spacing: inherit;
+    color: inherit;
+  }
+  
+  .panel {
+    width: 300pt;
+    float: left;
+    font-size: 8pt;
+    margin-bottom: 8px;
+  }
+  
+  .overlay {
+    padding-top: 6pt;
+    color: gray;
+  }
+  
+  .overlay-element {
+    text-align: center;
+    height: 16pt;
+  }
+  
+  #results {
+    margin-top: -7px;
+  }
+  
+  .sectionheader {
+    margin-top: 7px;
+    background: #e0e0e0;
+    color: black;
+    padding: 1px;
+  }
+  
+  .approved {
+    border-left: 1px solid #D4F7D4;
+    border-right: 1px solid #D4F7D4;
+    border-bottom: 1px solid #D4F7D4;
+  }
+  
+  .approved > .sectionheader {
+    background: #D4F7D4;
+  }
+
+  .incomingRequiringAttention {
+    border-left: 1px solid #F7D4D4;
+    border-right: 1px solid #F7D4D4;
+    border-bottom: 1px solid #F7D4D4;
+  }
+  
+  .incomingRequiringAttention > .sectionheader {
+    background: #F7D4D4;
+  }
+  
+  .outgoingRequiringAttention {
+    border-left: 1px solid #F1F19C;
+    border-right: 1px solid #F1F19C;
+    border-bottom: 1px solid #F1F19C;
+  }
+  
+  .outgoingRequiringAttention > .sectionheader {
+    background: #F1F19C;
+  }
+
+  .revision {
+    width: 100%;
+    color: #505050;
+    cursor: default;
+  }
+  
+  .revisionheader {
+  
+  }
+  
+  .revisionheader:hover {
+    background: #eaeaea;
+  }
+  
+  .revisionTable {
+    width: 100%;
+  }
+  
+  .description {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #777;
+    width: 194pt;
+  }
+  
+  .author {
+    overflow: hidden;
+    width: 70pt;
+  }
+  
+  .reviewers {
+    overflow: hidden;
+    width: 70pt;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  
+  .incomingRequiringAttention .reviewers {
+    display: none;
+  }
+  
+  button.button {
+    font-size: 11px;
+    padding: 0 10px;
+    float: right;
+    margin-right: 5px;
+  }
+  
+  button.button:first-child {
+    margin-right: 20px;
+  }
+  
+  .action {
+    background-image: url('img/arrow_down.svg');
+    background-repeat: no-repeat;
+    width: 6px;
+    height: 5px;
+    margin-top: 5px;
+    margin-right: 3px;
+    float: right;
+  }
+  
+  .expanded .action {
+    background-image: url('img/arrow_up.svg');
+  }
+  
+  .phabricator {
+    float: left;
+    margin-right: 3px;
+    margin-top: 1px;
+    margin-bottom: -1px;
+    opacity: 0.5;
+  }
+  
+  .approvedreviewer {
+    color: green;
+  }
+  
+  .statusmarker {
+    width: 11px;
+  }
+  
+  .marker {
+    border-radius: 3px;
+    opacity: 0.75;
+  }
+  
+  .pendingmarker {
+    background: #F3C65B;
+  }
+  
+  .approvedmarker {
+    background: #477C0B;
+  }
+  
+  .submittedmarker {
+    background: #757575;
+  }
+  
+  .smallsize {
+    margin-left: 4px;
+    margin-top: 2px;
+    width: 3px;
+    height: 3px;
+  }
+  
+  .mediumsize {
+    margin-left: 3px;
+    margin-top: 1px;
+    width: 5px;
+    height: 5px;
+  }
+  
+  .largesize {
+    margin-left: 2px;
+    margin-top: 0px;
+    width: 7px;
+    height: 7px;
+  }
+  
+  .details {
+    display: none;
+  }
+  
+  .expanded .details {
+    display: inherit;
+  }
+  
+  .expanded .notfirst {
+    border-top: 1px solid #DDD;
+  }
+  
+  .expanded .notlast {
+    border-bottom: 1px solid #DDD;
+  }
+  
+  .message {
+    margin-left: 1%;
+    margin-right: 1%;
+    margin-top: 1%;
+    font-family: monospace;
+    font-size: 90%;
+  }
+  
+  .attribs {
+    width: 98%;
+    margin: 1%;
+    background: #F7F7F7;
+    border: 1px solid #E7E7E7;
+  }
+  
+  .attribKey {
+    width: 20%;
+  }
+  
+  .attribValue {
+    width: 80%;
+  }
+  
