@@ -6,9 +6,8 @@ import localStore from './local-store';
 
 const request = require('request-promise');
 
-/// Invoke the given phabricator API with the given parameters. Returns the
-/// result of the API call.
-async function callPhabAPI(api, params) {
+/// Query a csrf login token for phabricator.
+async function getCSRFToken() {
     // Extract a csrf token from the current users profile.
     var csrf = await fetch('https://reviews.llvm.org/login/refresh/').
         then(r => r.text());
@@ -17,8 +16,12 @@ async function callPhabAPI(api, params) {
     // If we can't extract the token, the user has an invalid login.
     if (!tokenMatch)
         throw 'invalid-login';
-    csrf = tokenMatch[1];
+    return tokenMatch[1];
+}
 
+/// Invoke the given phabricator API with the given parameters. Returns the
+/// result of the API call.
+async function callPhabAPI(api, token, params) {
     // Query the api method.
     return request.post('https://reviews.llvm.org/api/' + api, {
         form: {
@@ -26,7 +29,7 @@ async function callPhabAPI(api, params) {
             params: JSON.stringify(params)
         },
         headers: {
-            'x-phabricator-csrf': csrf
+            'x-phabricator-csrf': token
         },
         json: true
     });
@@ -41,21 +44,22 @@ export async function getPhabID() {
     var cachedID = await localStore.get('phabID') || null;
     if (cachedID != undefined)
         return cachedID;
+    var token = await getCSRFToken();
 
     // Invoke the API for checking the current user.
-    var resp = await callPhabAPI('user.whoami');
+    var resp = await callPhabAPI('user.whoami', token);
     await localStore.set('phabID', resp.result.phid);
     return resp.result.phid;
 }
 
 /// Returns the username for a given phabricator ID.
 var knownPHIDUserNames = {};
-async function getNameForPhabID(phabID) {
+async function getNameForPhabID(phabID, token) {
     var username = knownPHIDUserNames[phabID];
     if (username)
         return username;
 
-    var resp = await callPhabAPI('user.search', {
+    var resp = await callPhabAPI('user.search', token, {
         'constraints': {
             'phids': [phabID]
         }
@@ -102,7 +106,7 @@ export async function snoozeRevision(revisionID) {
 }
 
 /// Compute the usernames for the authors and reviewers of each revision.
-async function computeUsernames(revisionMap) {
+async function computeUsernames(revisionMap, token) {
     var revisionList = revisionMap.result.data;
     for (let i = 0; i < revisionList.length; ++i) {
         var revision = revisionList[i];
@@ -122,45 +126,46 @@ async function computeUsernames(revisionMap) {
 
         // Update the author and any reviewers.
         revision.fields.authorName =
-            await getNameForPhabID(revision.fields.authorPHID);
+            await getNameForPhabID(revision.fields.authorPHID, token);
 
         var reviewers = revision.attachments.reviewers.reviewers;
         for (let j = 0; j < reviewers.length; ++j)
             reviewers[j].reviewerName =
-                await getNameForPhabID(reviewers[j].reviewerPHID);
+                await getNameForPhabID(reviewers[j].reviewerPHID, token);
     }
     return revisionMap;
 }
 
 /// Query the revisions with the provided constraints.
-async function queryRevisions(constraints) {
-    return callPhabAPI('differential.revision.search', {
+async function queryRevisions(token, constraints) {
+    return callPhabAPI('differential.revision.search', token, {
         'attachments': {
             'reviewers': true
         },
         'constraints': constraints,
         'order': 'updated'
-    }).then(computeUsernames);
+    }).then(revisionMap => computeUsernames(revisionMap, token));
 }
 
 /// Refresh the current set of revisions.
 export async function refreshRevisionList() {
     var userPhabID = await getPhabID();
+    var token = await getCSRFToken();
 
     // Resolve all of the revision promises.
     let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
         // Compute the revisions that the user needs to review.
-        queryRevisions({
+        queryRevisions(token, {
             'reviewerPHIDs': [userPhabID],
             'statuses': ['needs-review']
         }),
         // Compute the revisions the user needs to update.
-        queryRevisions({
+        queryRevisions(token, {
             'authorPHIDs': [userPhabID],
             'statuses': ['needs-revision']
         }),
         // Compute the revisions the user is ready to submit.
-        queryRevisions({
+        queryRevisions(token, {
             'authorPHIDs': [userPhabID],
             'statuses': ['accepted']
         })
