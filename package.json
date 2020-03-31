@@ -5,10 +5,9 @@
 		"build:webpack": "webpack --mode=production",
 		"build:deps": "./node_modules/google-closure-library/closure/bin/build/depswriter.py --root_with_prefix 'source ../../../../source' > ./source/deps.js",
 		"watch": "webpack --mode=development --watch",
-		"prerelease:version": "VERSION=$(utc-version); echo $VERSION; dot-json distribution/manifest.json version $VERSION",
-		"prerelease:source-url": "if [ ! -z \"${TRAVIS_REPO_SLUG}\" ]; then echo https://github.com/$TRAVIS_REPO_SLUG/tree/\"${TRAVIS_TAG:-$TRAVIS_COMMIT}\" > distribution/SOURCE_URL; fi",
+		"prerelease:version": "VERSION=$(utc-version); echo $VERSION; dot-json build/manifest.json version $VERSION",
 		"release": "npm-run-all build prerelease:* release:*",
-		"release:cws": "webstore upload --source=distribution --auto-publish"
+		"release:cws": "webstore upload --source=build --auto-publish"
 	},
 	"dependencies": {
 		"fermata": "^0.11.1",

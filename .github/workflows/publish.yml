@@ -1,0 +1,24 @@
+name: Publish Package
+
+on:
+  repository_dispatch:
+    types: publish
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - run: npm install
+      - run: npm ci
+      - run: npm run release
+        env:
+          EXTENSION_ID: fakmbnamolekigaphjbfimbebohdegma
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+
