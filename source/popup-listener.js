@@ -51,5 +51,5 @@ export function initializePopupListener() {
             });
         return !hasResponded;
     };
-    chrome.extension.onMessage.addListener(listener);
+    chrome.runtime.onMessage.addListener(listener);
 }

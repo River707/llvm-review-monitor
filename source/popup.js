@@ -37,7 +37,7 @@ var popupErrorText = {
 // arguments.
 function sendMessage(functionName, ...args) {
     return new Promise((resolve, reject) => {
-        chrome.extension.sendMessage([functionName, ...args], (response) => {
+        chrome.runtime.sendMessage([functionName, ...args], (response) => {
             // Check to see if the response returned a value or an error.
             if (response.hasOwnProperty('value'))
                 resolve(response.value);
