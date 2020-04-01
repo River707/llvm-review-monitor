@@ -170,9 +170,10 @@ export async function refreshRevisionList() {
             'statuses': ['accepted']
         })
     ]);
-
-    revisions[RevisionStates.ToReview] = toReview;
-    revisions[RevisionStates.NeedsUpdate] = needsUpdate;
-    revisions[RevisionStates.ReadyToSubmit] = readyToSubmit;
+    revisions = {
+        [RevisionStates.ToReview]: toReview,
+        [RevisionStates.NeedsUpdate]: needsUpdate,
+        [RevisionStates.ReadyToSubmit]: readyToSubmit
+    }
     return revisions;
 }
