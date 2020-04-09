@@ -4,7 +4,7 @@ import { refreshRevisionList } from './phabricator'
 
 /// Reset the alarm used for updating the badge.
 async function resetAlarm() {
-	const delayInSeconds = 120;
+	const delayInSeconds = 60;
 	var delayInMinutes = Math.max(Math.ceil(delayInSeconds / 60), 1);
 	chrome.alarms.create({ delayInMinutes });
 }
