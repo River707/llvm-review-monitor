@@ -42,7 +42,7 @@ export function initializePopupListener() {
         let hasResponded = false;
         result.then(
             function (value) {
-                sendResponse({ value: value });
+                sendResponse({ value: JSON.parse(JSON.stringify(value)) });
                 hasResponded = true;
             },
             function (error) {
