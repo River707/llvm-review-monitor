@@ -1,4 +1,5 @@
 import localStore from './local-store';
+import { Mutex } from 'async-mutex'
 
 //===--------------------------------------------------------------------===//
 // Raw Phabricator Conduit API
@@ -86,7 +87,8 @@ export const RevisionStates = {
 }
 
 /// A list comprising revisions for each of the different states.
-export var revisions = {};
+var revisions = {};
+var revisionMutex = new Mutex();
 
 /// Snooze the given revision. This will hide remove it from the display
 /// until it has been updated again.
@@ -170,10 +172,24 @@ export async function refreshRevisionList() {
             'statuses': ['accepted']
         })
     ]);
-    revisions = {
-        [RevisionStates.ToReview]: toReview,
-        [RevisionStates.NeedsUpdate]: needsUpdate,
-        [RevisionStates.ReadyToSubmit]: readyToSubmit
-    }
-    return revisions;
+
+    return revisionMutex.runExclusive(async () => {
+        // Only update the revision state if we got a valid response.
+        if (toReview)
+            revisions[RevisionStates.ToReview] = toReview;
+        if (needsUpdate)
+            revisions[RevisionStates.NeedsUpdate] = needsUpdate;
+        if (readyToSubmit)
+            revisions[RevisionStates.ReadyToSubmit] = readyToSubmit;
+        return revisions;
+    });
+}
+
+/// Query the current set of revisions.
+export async function getRevisions() {
+    return revisionMutex.runExclusive(async () => {
+        // Return a copy of the revisions to avoid being
+        // overwritten by an asynchronous update.
+        return JSON.parse(JSON.stringify(revisions));
+    });
 }

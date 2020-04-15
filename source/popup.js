@@ -49,7 +49,7 @@ function sendMessage(functionName, ...args) {
 
 // Query the current set of revisions.
 function getRevisions() {
-    return sendMessage('getRevisions');
+    return sendMessage('getCurrentRevisions');
 }
 
 // Snooze the revision with the given id.

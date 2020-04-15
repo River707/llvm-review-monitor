@@ -1,4 +1,4 @@
-import { revisions, RevisionStates } from './phabricator';
+import { RevisionStates } from './phabricator';
 
 //===--------------------------------------------------------------------===//
 // Badge Data
@@ -54,7 +54,7 @@ function setBadgeData(text, color, title) {
 var lastDiagnosticState = null;
 
 /// Update the current badge state.
-export function updateBadge() {
+export function updateBadge(revisions) {
     // Reset the diagnostic state.
     lastDiagnosticState = null;
 

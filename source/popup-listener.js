@@ -1,4 +1,4 @@
-import { revisions, snoozeRevision } from './phabricator';
+import { getRevisions, snoozeRevision } from './phabricator';
 import { getBadgeDiagnosticState, updateBadge } from './badge';
 
 //===--------------------------------------------------------------------===//
@@ -7,8 +7,8 @@ import { getBadgeDiagnosticState, updateBadge } from './badge';
 
 /// Handler object for responding to requests from the popup.
 class PopupRequestProxy {
-    async getRevisions() {
-        return revisions;
+    async getCurrentRevisions() {
+        return getRevisions();
     }
     async snoozeRevision(revisionID) {
         await snoozeRevision(revisionID);
@@ -42,7 +42,7 @@ export function initializePopupListener() {
         let hasResponded = false;
         result.then(
             function (value) {
-                sendResponse({ value: JSON.parse(JSON.stringify(value)) });
+                sendResponse({ value: value });
                 hasResponded = true;
             },
             function (error) {

@@ -10,6 +10,7 @@
 		"release:cws": "webstore upload --source=build --auto-publish"
 	},
 	"dependencies": {
+		"async-mutex": "^0.2.1",
 		"fermata": "^0.11.1",
 		"google-closure-library": "^20200315.0.0",
 		"request": "^2.88.2",
