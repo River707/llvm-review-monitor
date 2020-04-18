@@ -89,6 +89,7 @@ export const RevisionStates = {
 /// A list comprising revisions for each of the different states.
 var revisions = {};
 var revisionMutex = new Mutex();
+var lastRevisionUpdate = 0;
 
 /// Snooze the given revision. This will hide remove it from the display
 /// until it has been updated again.
@@ -186,10 +187,46 @@ async function queryRevisions(token, constraints) {
     }).then(revisionMap => computeUsernames(revisionMap, token));
 }
 
+/// Returns true if the revision list needs to be refreshed, false
+/// otherwise.
+async function shouldRefreshRevisionList(userPhabID, token) {
+    // Get the lastest update for the given revisions.
+    var getLastUpdate = async constraintTag => {
+        return callPhabAPI('differential.revision.search', token, {
+            'constraints': {
+                [constraintTag]: [userPhabID],
+            },
+            'limit': 1,
+            'order': 'updated'
+        }).then(revisionPing => {
+            // Check if the modification date is after the last revision list
+            // update.
+            var revisionList = revisionPing.result.data;
+            if (revisionList.length == 0)
+                return 0;
+            return revisionList[0].fields.dateModified;
+        });
+    };
+
+    // Check to see if any of the reviewed revisions have been updated.
+    var latestUpdate = Math.max(
+        await getLastUpdate('authorPHIDs'),
+        await getLastUpdate('reviewerPHIDs')
+    );
+    if (latestUpdate <= lastRevisionUpdate)
+        return false;
+    lastRevisionUpdate = latestUpdate;
+    return true;
+}
+
 /// Refresh the current set of revisions.
 export async function refreshRevisionList() {
     var userPhabID = await getPhabID();
     var token = await getCSRFToken();
+
+    // Check to see if we need to update the revision list.
+    if (! await shouldRefreshRevisionList(userPhabID, token))
+        return revisions;
 
     let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
         // Compute the revisions that the user needs to review.
