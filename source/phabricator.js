@@ -261,8 +261,12 @@ export async function refreshRevisionList() {
 /// Query the current set of revisions.
 export async function getRevisions() {
     return revisionMutex.runExclusive(async () => {
-        // Return a copy of the revisions to avoid being
+        // Return a copy of the revision list to avoid being
         // overwritten by an asynchronous update.
-        return JSON.parse(JSON.stringify(revisions));
+        return {
+            [RevisionStates.ToReview]: revisions[RevisionStates.ToReview],
+            [RevisionStates.NeedsUpdate]: revisions[RevisionStates.NeedsUpdate],
+            [RevisionStates.ReadyToSubmit]: revisions[RevisionStates.ReadyToSubmit]
+        };
     });
 }
