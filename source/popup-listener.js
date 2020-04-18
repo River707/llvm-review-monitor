@@ -12,7 +12,7 @@ class PopupRequestProxy {
     }
     async snoozeRevision(revisionID) {
         await snoozeRevision(revisionID);
-        updateBadge();
+        updateBadge(await getRevisions());
         return true;
     }
 }

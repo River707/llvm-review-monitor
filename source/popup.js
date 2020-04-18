@@ -66,8 +66,8 @@ class PopupWidget {
     constructor(revisions) {
         this.sections = [];
         for (let [revisionState, revisionList] of Object.entries(revisions))
-            if (revisionList.result.data.length != 0)
-                this.sections.push(new SectionWidget(revisionState, revisionList.result.data));
+            if (revisionList.length != 0)
+                this.sections.push(new SectionWidget(revisionState, revisionList));
     }
 
     // Return if the widget contains no sections.

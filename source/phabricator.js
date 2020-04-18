@@ -41,11 +41,10 @@ async function callPhabAPI(api, token, params) {
 //===--------------------------------------------------------------------===//
 
 /// Returns the phabricator ID for the current user.
-export async function getPhabID() {
+export async function getPhabID(token) {
     var cachedID = await localStore.get('phabID') || null;
     if (cachedID != undefined)
         return cachedID;
-    var token = await getCSRFToken();
 
     // Invoke the API for checking the current user.
     var resp = await callPhabAPI('user.whoami', token);
@@ -87,7 +86,11 @@ export const RevisionStates = {
 }
 
 /// A list comprising revisions for each of the different states.
-var revisions = {};
+var revisions = {
+    [RevisionStates.ToReview]: [],
+    [RevisionStates.NeedsUpdate]: [],
+    [RevisionStates.ReadyToSubmit]: []
+};
 var revisionMutex = new Mutex();
 var lastRevisionUpdate = 0;
 
@@ -97,8 +100,7 @@ export async function snoozeRevision(revisionID) {
     await localStore.set(`snooze-${revisionID}`, Date.now());
 
     // Remove this revision from the revision list.
-    for (let revisionMap of Object.values(revisions)) {
-        var revisionList = revisionMap.result.data;
+    for (let revisionList of Object.values(revisions)) {
         for (let i = 0; i < revisionList.length; ++i) {
             if (revisionList[i].id == revisionID) {
                 revisionList.splice(i, 1);
@@ -127,8 +129,7 @@ async function getLastTransactionAuthor(revision, token) {
 }
 
 /// Compute the usernames for the authors and reviewers of each revision.
-async function computeUsernames(revisionMap, token) {
-    var revisionList = revisionMap.result.data;
+async function computeUsernames(revisionList, token) {
     for (let i = 0; i < revisionList.length; ++i) {
         var revision = revisionList[i];
 
@@ -157,13 +158,12 @@ async function computeUsernames(revisionMap, token) {
             reviewers[j].reviewerName =
                 await getNameForPhabID(reviewers[j].reviewerPHID, token);
     }
-    return revisionMap;
+    return revisionList;
 }
 
 /// Given a set of revions, filter out the ones that were last updated by the
 /// user.
-async function filterRevisionsLastUpdateByUser(revisionMap, userPHID) {
-    var revisionList = revisionMap.result.data;
+async function filterRevisionsLastUpdateByUser(revisionList, userPHID) {
     for (let i = 0; i < revisionList.length;) {
         var revision = revisionList[i];
 
@@ -173,7 +173,7 @@ async function filterRevisionsLastUpdateByUser(revisionMap, userPHID) {
         else
             ++i;
     }
-    return revisionMap;
+    return revisionList;
 }
 
 /// Query the revisions with the provided constraints.
@@ -184,7 +184,7 @@ async function queryRevisions(token, constraints) {
         },
         'constraints': constraints,
         'order': 'updated'
-    }).then(revisionMap => computeUsernames(revisionMap, token));
+    }).then(revisionMap => computeUsernames(revisionMap.result.data, token));
 }
 
 /// Returns true if the revision list needs to be refreshed, false
@@ -221,8 +221,8 @@ async function shouldRefreshRevisionList(userPhabID, token) {
 
 /// Refresh the current set of revisions.
 export async function refreshRevisionList() {
-    var userPhabID = await getPhabID();
     var token = await getCSRFToken();
+    var userPhabID = await getPhabID(token);
 
     // Check to see if we need to update the revision list.
     if (! await shouldRefreshRevisionList(userPhabID, token))

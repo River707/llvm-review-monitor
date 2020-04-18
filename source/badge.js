@@ -62,7 +62,7 @@ export function updateBadge(revisions) {
     var revisionStateArray = Object.values(RevisionStates);
     for (let i = 0; i < revisionStateArray.length; ++i) {
         var revisionState = revisionStateArray[i];
-        var revisionIt = revisions[revisionState].result.data;
+        var revisionIt = revisions[revisionState];
         if (revisionIt.length == 0)
             continue;
         var revisionBadgeData = badgeData[revisionState];
