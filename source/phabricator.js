@@ -107,6 +107,24 @@ export async function snoozeRevision(revisionID) {
     }
 }
 
+/// Given a revision, get the author PHID of the last modified transaction on
+/// that revision.
+async function getLastTransactionAuthor(revision, token) {
+    return await callPhabAPI('transaction.search', token, {
+        'objectIdentifier': revision.phid,
+        'limit': 10,
+    }).then(transactionResult => {
+        var transactionList = transactionResult.result.data;
+        for (let i = 0; i < transactionList.length; ++i) {
+            var transaction = transactionList[i];
+            if (transaction.type) {
+                revision.fields.lastModifiedAuthor = transaction.authorPHID;
+                break;
+            }
+        }
+    });
+}
+
 /// Compute the usernames for the authors and reviewers of each revision.
 async function computeUsernames(revisionMap, token) {
     var revisionList = revisionMap.result.data;
@@ -126,6 +144,9 @@ async function computeUsernames(revisionMap, token) {
             await localStore.remove(`snooze-${revision.id}`);
         }
 
+        // Get the updated modified date using the transaction data.
+        await getLastTransactionAuthor(revision, token);
+
         // Update the author and any reviewers.
         revision.fields.authorName =
             await getNameForPhabID(revision.fields.authorPHID, token);
@@ -134,6 +155,22 @@ async function computeUsernames(revisionMap, token) {
         for (let j = 0; j < reviewers.length; ++j)
             reviewers[j].reviewerName =
                 await getNameForPhabID(reviewers[j].reviewerPHID, token);
+    }
+    return revisionMap;
+}
+
+/// Given a set of revions, filter out the ones that were last updated by the
+/// user.
+async function filterRevisionsLastUpdateByUser(revisionMap, userPHID) {
+    var revisionList = revisionMap.result.data;
+    for (let i = 0; i < revisionList.length;) {
+        var revision = revisionList[i];
+
+        // If the last comment is from the user, filter this revision out.
+        if (revision.fields.lastModifiedAuthor == userPHID)
+            revisionList.splice(i, 1);
+        else
+            ++i;
     }
     return revisionMap;
 }
@@ -154,18 +191,17 @@ export async function refreshRevisionList() {
     var userPhabID = await getPhabID();
     var token = await getCSRFToken();
 
-    // Resolve all of the revision promises.
     let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
         // Compute the revisions that the user needs to review.
         queryRevisions(token, {
             'reviewerPHIDs': [userPhabID],
             'statuses': ['needs-review']
-        }),
+        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
         // Compute the revisions the user needs to update.
         queryRevisions(token, {
             'authorPHIDs': [userPhabID],
-            'statuses': ['needs-revision']
-        }),
+            'statuses': ['needs-review', 'needs-revision']
+        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
         // Compute the revisions the user is ready to submit.
         queryRevisions(token, {
             'authorPHIDs': [userPhabID],
