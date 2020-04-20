@@ -98,12 +98,12 @@ var lastRevisionUpdate = 0;
 /// Snooze the given revision. This will hide remove it from the display
 /// until it has been updated again.
 export async function snoozeRevision(revisionID) {
-    await localStore.set(`snooze-${revisionID}`, Date.now());
-
     // Remove this revision from the revision list.
     for (let revisionList of Object.values(revisions)) {
         for (let i = 0; i < revisionList.length; ++i) {
-            if (revisionList[i].id == revisionID) {
+            var revision = revisionList[i];
+            if (revision.id == revisionID) {
+                await localStore.set(`snooze-${revisionID}`, revision.fields.dateModified);
                 revisionList.splice(i, 1);
                 return;
             }
@@ -138,7 +138,7 @@ async function computeUsernames(revisionList, token) {
         var snoozeDate = await localStore.get(`snooze-${revision.id}`);
         if (snoozeDate) {
             // If the revision hasn't been updated, just splice it out.
-            if (snoozeDate > revision.fields.dateModified) {
+            if (snoozeDate >= revision.fields.dateModified) {
                 revisionList.splice(i--, 1);
                 continue;
             }
