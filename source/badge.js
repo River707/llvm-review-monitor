@@ -29,14 +29,17 @@ badgeData['offline'] = {
 };
 badgeData[RevisionStates.ToReview] = {
     formatTitle: (prefix, count) => count + ' incoming ' + prefix + ' requiring your attention',
+    notification: 'Incoming revision requires your attention',
     color: colors.red,
 };
 badgeData[RevisionStates.NeedsUpdate] = {
-    formatTitle: (_, count) => count + ' of your revisions ready to submit',
+    formatTitle: (prefix, count) => count + ' of your ' + prefix + ' requiring attention',
+    notification: 'Your revision requires your attention',
     color: colors.yellow,
 };
 badgeData[RevisionStates.ReadyToSubmit] = {
-    formatTitle: (prefix, count) => count + ' of your ' + prefix + ' requiring attention',
+    formatTitle: (_, count) => count + ' of your revisions ready to submit',
+    notification: 'Your revision is ready to submit',
     color: colors.green,
 };
 
@@ -45,6 +48,74 @@ function setBadgeData(text, color, title) {
     browser.browserAction.setBadgeBackgroundColor({ color });
     browser.browserAction.setTitle({ title });
 }
+
+//===--------------------------------------------------------------------===//
+// Notication API
+//===--------------------------------------------------------------------===//
+
+var lastRevisionStatusMap = null;
+var previousNotifications = [];
+
+/// Build a map containing the revision state for each of the given revisions.
+function buildRevisionState(revisions) {
+    var revisionStatusMap = new Map();
+    for (let [revisionState, revisionList] of Object.entries(revisions))
+        for (let i = 0; i < revisionList.length; ++i)
+            revisionStatusMap.set(revisionList[i].id, {
+                state: revisionState,
+                revision: revisionList[i]
+            });
+    return revisionStatusMap;
+}
+
+/// Send notifications for any new revisions coming in.
+export function sendNotifications(revisions) {
+    // Check to see if this is the first update. If it is, then we only need
+    // to update the revision state.
+    var newRevisionStatusMap = buildRevisionState(revisions);
+    if (!lastRevisionStatusMap) {
+        lastRevisionStatusMap = newRevisionStatusMap;
+        return;
+    }
+
+    // Clear out notifications previously emitted. This allows for notifying on
+    // the same revision if the state has changed.
+    previousNotifications.forEach(id => chrome.notifications.clear(id));
+    previousNotifications = [];
+
+    // Walk the new revision state. If any of the revisions have a new state,
+    // send a notification to the user.
+    newRevisionStatusMap.forEach((revisionStatus, id) => {
+        var lastStatus = lastRevisionStatusMap.get(id);
+        if (lastStatus && lastStatus.state == revisionStatus.state)
+            return;
+        var stateBadgeData = badgeData[revisionStatus.state];
+        chrome.notifications.create(id.toString(), {
+            type: 'basic',
+            title: revisionStatus.revision.fields.title,
+            message: stateBadgeData.notification,
+            iconUrl: 'img/icon.png',
+            priority: 2
+        }, id => previousNotifications.push(id));
+    });
+    lastRevisionStatusMap = newRevisionStatusMap;
+}
+
+chrome.notifications.onClicked.addListener(revisionID => {
+    var revisionURL = 'https://reviews.llvm.org/D' + revisionID;
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
+        // Look for an existing tab for the revision and activate it if found.
+        for (let i = 0, tab; tab = tabs[i]; ++i) {
+            if (tab.url && tab.url.indexOf(revisionURL) == 0) {
+                chrome.tabs.update(this._tab_id, { active: true });
+                return;
+            }
+        }
+        // Otherwise, open a new tab.
+        chrome.tabs.create({ url: revisionURL });
+    });
+    chrome.notifications.clear(revisionID);
+})
 
 //===--------------------------------------------------------------------===//
 // Badge Update API

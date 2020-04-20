@@ -1,5 +1,5 @@
 import { initializePopupListener } from './popup-listener';
-import { renderBadgeDiagnostic, updateBadge } from './badge';
+import { renderBadgeDiagnostic, updateBadge, sendNotifications } from './badge';
 import { refreshRevisionList } from './phabricator'
 
 /// Reset the alarm used for updating the badge.
@@ -31,7 +31,10 @@ async function update() {
 	// Make sure the revision list is up-to-date, then
 	// update the badge.
 	await refreshRevisionList()
-		.then(revisions => updateBadge(revisions))
+		.then(revisions => {
+			updateBadge(revisions);
+			sendNotifications(revisions);
+		})
 		.catch(error => handleError(error))
 		.finally(() => resetAlarm());
 }

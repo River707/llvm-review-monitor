@@ -92,6 +92,7 @@ var revisions = {
     [RevisionStates.ReadyToSubmit]: []
 };
 var revisionMutex = new Mutex();
+var updateMutex = new Mutex();
 var lastRevisionUpdate = 0;
 
 /// Snooze the given revision. This will hide remove it from the display
@@ -224,37 +225,40 @@ export async function refreshRevisionList() {
     var token = await getCSRFToken();
     var userPhabID = await getPhabID(token);
 
-    // Check to see if we need to update the revision list.
-    if (! await shouldRefreshRevisionList(userPhabID, token))
-        return revisions;
+    return updateMutex.runExclusive(async () => {
+        // Check to see if we need to update the revision list.
+        var shouldRefresh = await shouldRefreshRevisionList(userPhabID, token);
+        if (!shouldRefresh)
+            return revisions;
 
-    let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
-        // Compute the revisions that the user needs to review.
-        queryRevisions(token, {
-            'reviewerPHIDs': [userPhabID],
-            'statuses': ['needs-review']
-        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
-        // Compute the revisions the user needs to update.
-        queryRevisions(token, {
-            'authorPHIDs': [userPhabID],
-            'statuses': ['needs-review', 'needs-revision']
-        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
-        // Compute the revisions the user is ready to submit.
-        queryRevisions(token, {
-            'authorPHIDs': [userPhabID],
-            'statuses': ['accepted']
-        })
-    ]);
+        let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
+            // Compute the revisions that the user needs to review.
+            queryRevisions(token, {
+                'reviewerPHIDs': [userPhabID],
+                'statuses': ['needs-review']
+            }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
+            // Compute the revisions the user needs to update.
+            queryRevisions(token, {
+                'authorPHIDs': [userPhabID],
+                'statuses': ['needs-review', 'needs-revision']
+            }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
+            // Compute the revisions the user is ready to submit.
+            queryRevisions(token, {
+                'authorPHIDs': [userPhabID],
+                'statuses': ['accepted']
+            })
+        ]);
 
-    return revisionMutex.runExclusive(async () => {
-        // Only update the revision state if we got a valid response.
-        if (toReview)
-            revisions[RevisionStates.ToReview] = toReview;
-        if (needsUpdate)
-            revisions[RevisionStates.NeedsUpdate] = needsUpdate;
-        if (readyToSubmit)
-            revisions[RevisionStates.ReadyToSubmit] = readyToSubmit;
-        return revisions;
+        return revisionMutex.runExclusive(async () => {
+            // Only update the revision state if we got a valid response.
+            if (toReview)
+                revisions[RevisionStates.ToReview] = toReview;
+            if (needsUpdate)
+                revisions[RevisionStates.NeedsUpdate] = needsUpdate;
+            if (readyToSubmit)
+                revisions[RevisionStates.ReadyToSubmit] = readyToSubmit;
+            return revisions;
+        });
     });
 }
 
