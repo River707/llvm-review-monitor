@@ -225,7 +225,7 @@ export async function refreshRevisionList() {
     var token = await getCSRFToken();
     var userPhabID = await getPhabID(token);
 
-    return updateMutex.runExclusive(async () => {
+    return await updateMutex.runExclusive(async () => {
         // Check to see if we need to update the revision list.
         var shouldRefresh = await shouldRefreshRevisionList(userPhabID, token);
         if (!shouldRefresh)
@@ -249,14 +249,12 @@ export async function refreshRevisionList() {
             })
         ]);
 
-        return revisionMutex.runExclusive(async () => {
-            // Only update the revision state if we got a valid response.
-            if (toReview)
-                revisions[RevisionStates.ToReview] = toReview;
-            if (needsUpdate)
-                revisions[RevisionStates.NeedsUpdate] = needsUpdate;
-            if (readyToSubmit)
-                revisions[RevisionStates.ReadyToSubmit] = readyToSubmit;
+        return await revisionMutex.runExclusive(async () => {
+            revisions = {
+                [RevisionStates.ToReview]: toReview,
+                [RevisionStates.NeedsUpdate]: needsUpdate,
+                [RevisionStates.ReadyToSubmit]: readyToSubmit
+            };
             return revisions;
         });
     });
@@ -265,12 +263,6 @@ export async function refreshRevisionList() {
 /// Query the current set of revisions.
 export async function getRevisions() {
     return await revisionMutex.runExclusive(async () => {
-        // Return a copy of the revision list to avoid being overwritten by an
-        // asynchronous update.
-        return {
-            [RevisionStates.ToReview]: revisions[RevisionStates.ToReview],
-            [RevisionStates.NeedsUpdate]: revisions[RevisionStates.NeedsUpdate],
-            [RevisionStates.ReadyToSubmit]: revisions[RevisionStates.ReadyToSubmit]
-        };
+        return JSON.parse(JSON.stringify(revisions));
     });
 }
