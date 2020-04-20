@@ -116,7 +116,7 @@ export async function snoozeRevision(revisionID) {
 async function getLastTransactionAuthor(revision, token) {
     return await callPhabAPI('transaction.search', token, {
         'objectIdentifier': revision.phid,
-        'limit': 10,
+        'limit': 15,
     }).then(transactionResult => {
         var transactionList = transactionResult.result.data;
         for (let i = 0; i < transactionList.length; ++i) {
