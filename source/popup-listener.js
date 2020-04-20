@@ -8,7 +8,7 @@ import { getBadgeDiagnosticState, updateBadge } from './badge';
 /// Handler object for responding to requests from the popup.
 class PopupRequestProxy {
     async getCurrentRevisions() {
-        return getRevisions();
+        return await getRevisions();
     }
     async snoozeRevision(revisionID) {
         await snoozeRevision(revisionID);
@@ -38,14 +38,12 @@ export function initializePopupListener() {
         // Otherwise, try to dispatch to the popup listener.
         const methodName = request[0];
         const args = request.slice(1);
-        const result = (popupListener[methodName]).apply(popupListener, args);
         let hasResponded = false;
-        result.then(
-            function (value) {
+        (popupListener[methodName]).apply(popupListener, args)
+            .then(value => {
                 sendResponse({ value: value });
                 hasResponded = true;
-            },
-            function (error) {
+            }).catch(error => {
                 sendResponse({ error: String(error) });
                 hasResponded = true;
             });

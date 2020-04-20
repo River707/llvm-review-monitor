@@ -260,9 +260,9 @@ export async function refreshRevisionList() {
 
 /// Query the current set of revisions.
 export async function getRevisions() {
-    return revisionMutex.runExclusive(async () => {
-        // Return a copy of the revision list to avoid being
-        // overwritten by an asynchronous update.
+    return await revisionMutex.runExclusive(async () => {
+        // Return a copy of the revision list to avoid being overwritten by an
+        // asynchronous update.
         return {
             [RevisionStates.ToReview]: revisions[RevisionStates.ToReview],
             [RevisionStates.NeedsUpdate]: revisions[RevisionStates.NeedsUpdate],
