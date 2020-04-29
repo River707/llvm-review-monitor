@@ -91,7 +91,6 @@ var revisions = {
     [RevisionStates.NeedsUpdate]: [],
     [RevisionStates.ReadyToSubmit]: []
 };
-var revisionMutex = new Mutex();
 var updateMutex = new Mutex();
 var lastRevisionUpdate = 0;
 
@@ -105,6 +104,7 @@ export async function snoozeRevision(revisionID) {
             if (revision.id == revisionID) {
                 await localStore.set(`snooze-${revisionID}`, revision.fields.dateModified);
                 revisionList.splice(i, 1);
+                await localStore.set('revisions', revisions);
                 return;
             }
         }
@@ -249,20 +249,22 @@ export async function refreshRevisionList() {
             })
         ]);
 
-        return await revisionMutex.runExclusive(async () => {
-            revisions = {
-                [RevisionStates.ToReview]: toReview,
-                [RevisionStates.NeedsUpdate]: needsUpdate,
-                [RevisionStates.ReadyToSubmit]: readyToSubmit
-            };
-            return revisions;
-        });
+        revisions = {
+            [RevisionStates.ToReview]: toReview,
+            [RevisionStates.NeedsUpdate]: needsUpdate,
+            [RevisionStates.ReadyToSubmit]: readyToSubmit
+        };
+        await localStore.set('revisions', revisions);
+        return revisions;
     });
 }
 
 /// Query the current set of revisions.
 export async function getRevisions() {
-    return await revisionMutex.runExclusive(async () => {
-        return JSON.parse(JSON.stringify(revisions));
-    });
+    var storageRevisions = await localStore.get('revisions');
+    return {
+        [RevisionStates.ToReview]: storageRevisions[RevisionStates.ToReview],
+        [RevisionStates.NeedsUpdate]: storageRevisions[RevisionStates.NeedsUpdate],
+        [RevisionStates.ReadyToSubmit]: storageRevisions[RevisionStates.ReadyToSubmit]
+    };
 }
