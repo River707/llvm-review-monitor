@@ -1,4 +1,5 @@
 import { RevisionStates } from './phabricator';
+import localStore from './local-store';
 
 //===--------------------------------------------------------------------===//
 // Badge Data
@@ -53,54 +54,49 @@ function setBadgeData(text, color, title) {
 // Notication API
 //===--------------------------------------------------------------------===//
 
-var lastRevisionStatusMap = null;
-var previousNotifications = [];
-
 /// Build a map containing the revision state for each of the given revisions.
 function buildRevisionState(revisions) {
-    var revisionStatusMap = new Map();
+    var revisionStatusMap = {};
     for (let [revisionState, revisionList] of Object.entries(revisions))
         for (let i = 0; i < revisionList.length; ++i)
-            revisionStatusMap.set(revisionList[i].id, {
+            revisionStatusMap[revisionList[i].id] = {
                 state: revisionState,
-                revision: revisionList[i]
-            });
+                revisionTitle: revisionList[i].fields.title
+            };
     return revisionStatusMap;
 }
 
 /// Send notifications for any new revisions coming in.
-export function sendNotifications(revisions) {
+export async function sendNotifications(revisions) {
     // Check to see if this is the first update. If it is, then we only need
     // to update the revision state.
     var newRevisionStatusMap = buildRevisionState(revisions);
-    if (!lastRevisionStatusMap) {
-        lastRevisionStatusMap = newRevisionStatusMap;
+    var lastRevisionStatusMap = await localStore.get('lastRevisionStatusMap');
+    if (Object.entries(lastRevisionStatusMap).length == 0) {
+        await localStore.set('lastRevisionStatusMap', newRevisionStatusMap);
         return;
     }
 
-    // Clear out notifications previously emitted. This allows for notifying on
-    // the same revision if the state has changed.
-    previousNotifications.forEach(id => chrome.notifications.clear(id));
-    previousNotifications = [];
-
     // Walk the new revision state. If any of the revisions have a new state,
     // send a notification to the user.
-    newRevisionStatusMap.forEach((revisionStatus, id) => {
-        var lastStatus = lastRevisionStatusMap.get(id);
+    for (let [id, revisionStatus] of Object.entries(newRevisionStatusMap)) {
+        var lastStatus = lastRevisionStatusMap[id];
         if (lastStatus && lastStatus.state == revisionStatus.state)
-            return;
+            continue;
+        // Clear out any previous notifications for this ID.
+        chrome.notifications.clear(id.toString());
+
         var stateBadgeData = badgeData[revisionStatus.state];
-        console.log("creating notification for" + id.toString());
         chrome.notifications.create(id.toString(), {
             type: 'basic',
-            title: revisionStatus.revision.fields.title,
+            title: revisionStatus.revisionTitle,
             message: stateBadgeData.notification,
             iconUrl: 'img/icon.png',
             priority: 2,
             requireInteraction: true
-        }, id => previousNotifications.push(id));
-    });
-    lastRevisionStatusMap = newRevisionStatusMap;
+        });
+    }
+    await localStore.set('lastRevisionStatusMap', newRevisionStatusMap);
 }
 
 chrome.notifications.onClicked.addListener(revisionID => {

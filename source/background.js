@@ -31,9 +31,9 @@ async function update() {
 	// Make sure the revision list is up-to-date, then
 	// update the badge.
 	await refreshRevisionList()
-		.then(revisions => {
+		.then(async (revisions) => {
 			updateBadge(revisions);
-			sendNotifications(revisions);
+			await sendNotifications(revisions);
 		})
 		.catch(error => handleError(error))
 		.finally(() => resetAlarm());
