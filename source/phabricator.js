@@ -91,7 +91,6 @@ var revisions = {
     [RevisionStates.NeedsUpdate]: [],
     [RevisionStates.ReadyToSubmit]: []
 };
-var updateMutex = new Mutex();
 var lastRevisionUpdate = 0;
 
 /// Snooze the given revision. This will hide remove it from the display
@@ -225,38 +224,36 @@ export async function refreshRevisionList() {
     var token = await getCSRFToken();
     var userPhabID = await getPhabID(token);
 
-    return await updateMutex.runExclusive(async () => {
-        // Check to see if we need to update the revision list.
-        var shouldRefresh = await shouldRefreshRevisionList(userPhabID, token);
-        if (!shouldRefresh)
-            return revisions;
-
-        let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
-            // Compute the revisions that the user needs to review.
-            queryRevisions(token, {
-                'reviewerPHIDs': [userPhabID],
-                'statuses': ['needs-review']
-            }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
-            // Compute the revisions the user needs to update.
-            queryRevisions(token, {
-                'authorPHIDs': [userPhabID],
-                'statuses': ['needs-review', 'needs-revision']
-            }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
-            // Compute the revisions the user is ready to submit.
-            queryRevisions(token, {
-                'authorPHIDs': [userPhabID],
-                'statuses': ['accepted']
-            })
-        ]);
-
-        revisions = {
-            [RevisionStates.ToReview]: toReview,
-            [RevisionStates.NeedsUpdate]: needsUpdate,
-            [RevisionStates.ReadyToSubmit]: readyToSubmit
-        };
-        await localStore.set('revisions', revisions);
+    // Check to see if we need to update the revision list.
+    var shouldRefresh = await shouldRefreshRevisionList(userPhabID, token);
+    if (!shouldRefresh)
         return revisions;
-    });
+
+    let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
+        // Compute the revisions that the user needs to review.
+        queryRevisions(token, {
+            'reviewerPHIDs': [userPhabID],
+            'statuses': ['needs-review']
+        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
+        // Compute the revisions the user needs to update.
+        queryRevisions(token, {
+            'authorPHIDs': [userPhabID],
+            'statuses': ['needs-review', 'needs-revision']
+        }).then(result => filterRevisionsLastUpdateByUser(result, userPhabID)),
+        // Compute the revisions the user is ready to submit.
+        queryRevisions(token, {
+            'authorPHIDs': [userPhabID],
+            'statuses': ['accepted']
+        })
+    ]);
+
+    revisions = {
+        [RevisionStates.ToReview]: toReview,
+        [RevisionStates.NeedsUpdate]: needsUpdate,
+        [RevisionStates.ReadyToSubmit]: readyToSubmit
+    };
+    await localStore.set('revisions', revisions);
+    return revisions;
 }
 
 /// Query the current set of revisions.

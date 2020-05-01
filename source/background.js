@@ -52,10 +52,7 @@ function init() {
 	window.addEventListener('online', onConnectionUpdate);
 	window.addEventListener('offline', onConnectionUpdate);
 
-	// Initialize an alarm for refreshing the reviews.
 	chrome.alarms.onAlarm.addListener(update);
-	chrome.alarms.create({ when: Date.now() + 2000 });
-
 	initializePopupListener();
 	update();
 }

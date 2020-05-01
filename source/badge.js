@@ -90,12 +90,14 @@ export function sendNotifications(revisions) {
         if (lastStatus && lastStatus.state == revisionStatus.state)
             return;
         var stateBadgeData = badgeData[revisionStatus.state];
+        console.log("creating notification for" + id.toString());
         chrome.notifications.create(id.toString(), {
             type: 'basic',
             title: revisionStatus.revision.fields.title,
             message: stateBadgeData.notification,
             iconUrl: 'img/icon.png',
-            priority: 2
+            priority: 2,
+            requireInteraction: true
         }, id => previousNotifications.push(id));
     });
     lastRevisionStatusMap = newRevisionStatusMap;
