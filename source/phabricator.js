@@ -1,5 +1,4 @@
 import localStore from './local-store';
-import { Mutex } from 'async-mutex'
 
 //===--------------------------------------------------------------------===//
 // Raw Phabricator Conduit API
@@ -85,17 +84,9 @@ export const RevisionStates = {
     ReadyToSubmit: 'ready_to_submit',
 }
 
-/// A list comprising revisions for each of the different states.
-var revisions = {
-    [RevisionStates.ToReview]: [],
-    [RevisionStates.NeedsUpdate]: [],
-    [RevisionStates.ReadyToSubmit]: []
-};
-var lastRevisionUpdate = 0;
-
 /// Snooze the given revision. This will hide remove it from the display
 /// until it has been updated again.
-export async function snoozeRevision(revisionID) {
+export async function snoozeRevision(revisions, revisionID) {
     // Remove this revision from the revision list.
     for (let revisionList of Object.values(revisions)) {
         for (let i = 0; i < revisionList.length; ++i) {
@@ -213,9 +204,10 @@ async function shouldRefreshRevisionList(userPhabID, token) {
         await getLastUpdate('authorPHIDs'),
         await getLastUpdate('reviewerPHIDs')
     );
-    if (latestUpdate <= lastRevisionUpdate)
+    var lastRevisionUpdate = await localStore.get('lastRevisionUpdate');
+    if (lastRevisionUpdate && latestUpdate <= lastRevisionUpdate)
         return false;
-    lastRevisionUpdate = latestUpdate;
+    await localStore.set('lastRevisionUpdate', latestUpdate);
     return true;
 }
 
@@ -227,7 +219,7 @@ export async function refreshRevisionList() {
     // Check to see if we need to update the revision list.
     var shouldRefresh = await shouldRefreshRevisionList(userPhabID, token);
     if (!shouldRefresh)
-        return revisions;
+        return await getRevisions();
 
     let [toReview, needsUpdate, readyToSubmit] = await Promise.all([
         // Compute the revisions that the user needs to review.
@@ -247,7 +239,7 @@ export async function refreshRevisionList() {
         })
     ]);
 
-    revisions = {
+    var revisions = {
         [RevisionStates.ToReview]: toReview,
         [RevisionStates.NeedsUpdate]: needsUpdate,
         [RevisionStates.ReadyToSubmit]: readyToSubmit
@@ -259,6 +251,13 @@ export async function refreshRevisionList() {
 /// Query the current set of revisions.
 export async function getRevisions() {
     var storageRevisions = await localStore.get('revisions');
+    if (!storageRevisions) {
+        return {
+            [RevisionStates.ToReview]: [],
+            [RevisionStates.NeedsUpdate]: [],
+            [RevisionStates.ReadyToSubmit]: []
+        };
+    }
     return {
         [RevisionStates.ToReview]: storageRevisions[RevisionStates.ToReview],
         [RevisionStates.NeedsUpdate]: storageRevisions[RevisionStates.NeedsUpdate],

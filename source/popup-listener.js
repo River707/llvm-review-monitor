@@ -11,8 +11,9 @@ class PopupRequestProxy {
         return await getRevisions();
     }
     async snoozeRevision(revisionID) {
-        await snoozeRevision(revisionID);
-        updateBadge(await getRevisions());
+        var revisions = await getRevisions();
+        await snoozeRevision(revisions, revisionID);
+        updateBadge(revisions);
         return true;
     }
 }

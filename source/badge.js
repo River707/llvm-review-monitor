@@ -72,7 +72,7 @@ export async function sendNotifications(revisions) {
     // to update the revision state.
     var newRevisionStatusMap = buildRevisionState(revisions);
     var lastRevisionStatusMap = await localStore.get('lastRevisionStatusMap');
-    if (Object.entries(lastRevisionStatusMap).length == 0) {
+    if (!lastRevisionStatusMap) {
         await localStore.set('lastRevisionStatusMap', newRevisionStatusMap);
         return;
     }
