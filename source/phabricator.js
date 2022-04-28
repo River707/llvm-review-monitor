@@ -63,7 +63,21 @@ async function getNameForPhabID(phabID, token) {
             'phids': [phabID]
         }
     });
-    username = resp.result.data[0].fields.username;
+    if (resp.result.data.length != 0) {
+        username = resp.result.data[0].fields.username;
+    } else {
+        // If this wasn't a user, check to see if this is a project.
+        // If it isn't, bail out to using an unknown name.
+        var resp = await callPhabAPI('project.search', token, {
+            'constraints': {
+                'phids': [phabID]
+            }
+        });
+        if (resp.result.data.length != 0)
+            username = resp.result.data[0].fields.name;
+        else
+            username = "<unknown>";
+    }
     knownPHIDUserNames[phabID] = username;
     return username;
 }
